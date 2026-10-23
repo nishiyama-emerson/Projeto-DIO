@@ -1,0 +1,381 @@
+{
+  "name": "Projeto_DIO",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "clientes",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        -432,
+        0
+      ],
+      "id": "a9454e59-9fc2-4da4-9804-82aaa8f6aa0c",
+      "name": "Webhook",
+      "webhookId": "47e3e87c-f25b-407b-afe3-31057060d0b1"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        768,
+        128
+      ],
+      "id": "af00f8fe-5595-4554-b6ae-9240176a796f",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "url": "https://digitalinnovationone.github.io/dio-lab-assistente-investimentos-rpa-n8n/data.csv",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -144,
+        0
+      ],
+      "id": "3e1b754c-0c92-40e7-8fe3-1d07219f2baa",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Pega o texto bruto do CSV vindo do nó HTTP Request\nconst csvText = $input.first().json.data;\n\nif (!csvText) {\n  return [];\n}\n\n// 2. Divide o texto em linhas, removendo quebras vazias\nconst linhas = csvText.trim().split(/\\r?\\n/);\n\nif (linhas.length < 2) {\n  return [];\n}\n\n// 3. Extrai e limpa os cabeçalhos (primeira linha do CSV)\nconst headers = linhas[0].split(',').map(h => h.trim());\n\n// 4. Mapeia cada linha subsequente em um objeto formatado para o n8n\nconst itensFormatados = linhas.slice(1).map(linha => {\n  const valores = linha.split(',').map(v => v.trim());\n  const obj = {};\n\n  headers.forEach((header, index) => {\n    let valor = valores[index] !== undefined ? valores[index] : '';\n    \n    // Converte opcionalmente a coluna 'minimo' para número para facilitar regras futuras\n    if (header.toLowerCase() === 'minimo') {\n      valor = Number(valor) || valor;\n    }\n\n    obj[header] = valor;\n  });\n\n  // Retorna no formato de item padrão do n8n\n  return { json: obj };\n});\n\nreturn itensFormatados;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        112,
+        0
+      ],
+      "id": "b4f53ee1-2a67-43d6-93f3-3051d192076d",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "content": "Webhook conectado ao ambiemte Collab",
+        "height": 272
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -512,
+        -80
+      ],
+      "typeVersion": 1,
+      "id": "3d99bbb6-467c-4c4a-92f3-16b0ea1be17b",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "Faz a requisição e o acesso aos dados de investimentos (docs/data.csv)",
+        "height": 272
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -208,
+        -80
+      ],
+      "typeVersion": 1,
+      "id": "c0bb5859-fae0-4891-aebf-4f28b226131d",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        384,
+        -176
+      ],
+      "id": "472f437a-a86d-403f-82db-63e582479d92",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "content": "Código para formatar as  informações do arquivo csv",
+        "height": 272,
+        "width": 208
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        64,
+        -80
+      ],
+      "typeVersion": 1,
+      "id": "5347ed56-ada8-4113-81cc-f489b151a609",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "Recebe as Informações da página de Clientes e do arquivo \"dados de investimento\" e faz um cruzamento entre eles",
+        "height": 288
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        336,
+        -272
+      ],
+      "typeVersion": 1,
+      "id": "49e8d933-bb1a-4c0f-a169-e9e6799e7ca4",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Pega a lista de clientes (do Webhook)\nconst clientes = $('Webhook').first().json.body.clientes;\n\n// 2. Pega a lista de investimentos formatada pelo nó de código anterior\nconst investimentos = $('Code in JavaScript').all().map(item => item.json);\n\n// Função auxiliar para extrair o valor numérico da rentabilidade e ordenar do maior para o menor\nfunction extrairRentabilidadeNumerica(rentabilidadeStr) {\n  if (!rentabilidadeStr || rentabilidadeStr.toLowerCase().includes('variável')) {\n    return 0; // Atribui 0 ou prioridade menor para opções de renda variável\n  }\n  const matches = rentabilidadeStr.match(/[\\d,\\.]+/g);\n  if (matches && matches.length > 0) {\n    const numStr = matches[matches.length - 1].replace(/\\./g, '').replace(',', '.');\n    return parseFloat(numStr) || 0;\n  }\n  return 0;\n}\n\n// 3. Itera sobre cada cliente para encontrar APENAS A MELHOR opção compatível\nconst resultado = clientes.map(cliente => {\n  // Trata e converte o saldo do cliente (ex: \"R$ 12.500,00\" -> 12500)\n  let saldoNumerico = 0;\n  if (typeof cliente.saldo === 'number') {\n    saldoNumerico = cliente.saldo;\n  } else if (typeof cliente.saldo === 'string') {\n    saldoNumerico = parseFloat(\n      cliente.saldo.replace('R$', '').replace(/\\./g, '').replace(',', '.').trim()\n    ) || 0;\n  }\n\n  // Filtra as opções que atendem ao perfil e cujo mínimo cabe no saldo\n  const opcoesElegiveis = investimentos.filter(inv => {\n    const mesmoPerfil = inv.perfil.toLowerCase() === cliente.perfil.toLowerCase();\n    \n    const minimoNumerico = parseFloat(\n      String(inv.minimo).replace('R$', '').replace(/\\./g, '').replace(',', '.').trim()\n    ) || 0;\n\n    const saldoSuficiente = saldoNumerico >= minimoNumerico;\n\n    return mesmoPerfil && saldoSuficiente;\n  });\n\n  // Ordena as opções elegíveis da MAIOR rentabilidade para a menor\n  opcoesElegiveis.sort((a, b) => {\n    return extrairRentabilidadeNumerica(b.rentabilidade) - extrairRentabilidadeNumerica(a.rentabilidade);\n  });\n\n  // Pega apenas a melhor opção (a primeira da lista após a ordenação)\n  const melhorOpcao = opcoesElegiveis.length > 0 ? opcoesElegiveis[0] : null;\n\n  // Monta a linha de exibição da melhor opção\n  let textoInvestimento = '';\n  if (melhorOpcao) {\n    textoInvestimento = `• ${melhorOpcao.produto} (Aplicação Mínima: R$ ${melhorOpcao.minimo} | Rentabilidade: ${melhorOpcao.rentabilidade})`;\n  } else {\n    textoInvestimento = '• No momento, não encontramos nenhuma opção com valor mínimo compatível com o seu saldo atual.';\n  }\n\n  // Monta a mensagem final personalizada destacando a recomendação única\n  const mensagem = `Olá, ${cliente.nome}!\\n\\n` +\n    `Identificamos que seu perfil de investidor é *${cliente.perfil}* e seu saldo disponível é de *${cliente.saldo}*.\\n\\n` +\n    `Com base nisso, selecionamos a **melhor opção de investimento** ideal para o seu momento:\\n` +\n    `${textoInvestimento}\\n\\n` +\n    `Se precisar de suporte para realizar a aplicação, estamos à disposição!`;\n\n  return {\n    json: {\n      nome: cliente.nome,\n      email: cliente.email,\n      perfil: cliente.perfil,\n      saldo: cliente.saldo,\n      mensagemPersonalizada: mensagem,\n      melhorInvestimento: melhorOpcao\n    }\n  };\n});\n\nreturn resultado;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        -176
+      ],
+      "id": "26510775-d279-43e5-97e6-2a6a5a16eafa",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.5-flash-lite",
+          "mode": "list",
+          "cachedResultName": "Gemini 3.5 Flash Lite"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Escreva um email curto, PORT-BR, para o cliente abaixo, sem prometer ganhos e garantias.\n\nCliente: {{ $json.nome }}\nPerfil:{{ $json.perfil }}\nSaldo:{{ $json.saldo }}\n\nRecomendação:\nProduto:{{ $json.melhorInvestimento.produto }}\nMínimo:{{ $json.melhorInvestimento.minimo }}\nRentabilidade:{{ $json.melhorInvestimento.rentabilidade }}\n\nRetorne JSON com:\n{\n  \"Subject\": \"...\",\n  \"text_body:\" \"...\",\n  \"text_html:\" \"...\"\n}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        960,
+        -176
+      ],
+      "id": "0bb32b4a-0ebb-4904-9440-7038d658c594",
+      "name": "Message a model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "1WXUugyEvvdkbv2B",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "Cruza a informações de qual a melhor opção de investimento de acordo com o saldo e o perfil do cliente",
+        "height": 288
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        656,
+        -272
+      ],
+      "typeVersion": 1,
+      "id": "cd690e68-d4b1-428e-bb59-c5636e51728d",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  try {\n    // 1. Acessa o texto bruto gerado pelo modelo\n    let rawText = item.json.content.parts[0].text;\n    \n    // 2. Remove as marcações de bloco de código do Markdown (```json e ```)\n    rawText = rawText.replace(/```json\\s*/gi, '').replace(/```\\s*$/gi, '').trim();\n    \n    // 3. Converte a string JSON limpa em um objeto JavaScript real\n    const parsedData = JSON.parse(rawText);\n    \n    // 4. Retorna os dados normalizados para o n8n\n    return {\n      json: parsedData\n    };\n  } catch (error) {\n    // Retorno de segurança caso ocorra algum erro no parse\n    return {\n      json: {\n        erro: \"Falha ao normalizar o texto para JSON\",\n        textoOriginal: item.json.content.parts[0].text\n      }\n    };\n  }\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1328,
+        -176
+      ],
+      "id": "eaf5b7f3-fd97-4c93-b66c-218e859fcb40",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Code in JavaScript1').item.json.email }}",
+        "subject": "={{ $json.Subject }}",
+        "message": "={{ $json.text_html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1552,
+        -176
+      ],
+      "id": "7d562c1f-0470-49dc-9ce3-a81855f323ad",
+      "name": "Send a message",
+      "webhookId": "84d01fe8-f757-4450-a193-c9f1b8563704",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "T8aWtuJsQx27YG8A",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "IA Generativa gera a mensagem personalizada",
+        "height": 320,
+        "width": 272
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        928,
+        -272
+      ],
+      "typeVersion": 1,
+      "id": "a8b2fe15-7f3b-4ae3-94a7-d57fe406e055",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "Normaliza o formato JSON separando o texto gerado pela IA",
+        "height": 320
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1248,
+        -272
+      ],
+      "typeVersion": 1,
+      "id": "e2500712-0ad6-445a-9a82-d8b66b7ed7cd",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "content": "Formata e encaminha os emails para os clientes.",
+        "height": 320
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1520,
+        -272
+      ],
+      "typeVersion": 1,
+      "id": "7a118d6f-694e-4af7-a1ef-81c561cef79b",
+      "name": "Sticky Note7"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        []
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "26ae2748-9abc-4c00-ba11-092b7ff0850b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "55cbb6d1a0396711328f803ad6f7f4bcf106b3bd432b0e98d55337c3e74ed43a"
+  },
+  "nodeGroups": [],
+  "id": "6TtBAFWH5tSjJJHo",
+  "tags": []
+}
